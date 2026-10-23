@@ -16,7 +16,9 @@ macro_rules! configure_http_client {
     ($builder:expr, $tls_type:expr, $danger_accept_invalid_cert:expr, $Client: ty) => {{
         // https://github.com/rustdesk/rustdesk/issues/11569
         // https://docs.rs/reqwest/latest/reqwest/struct.ClientBuilder.html#method.no_proxy
-        let mut builder = $builder.no_proxy();
+        let mut builder = $builder
+            .no_proxy()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AcessaRemoto/1.5");
 
         match $tls_type {
             TlsType::Plain => {}
