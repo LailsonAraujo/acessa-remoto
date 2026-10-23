@@ -27,7 +27,9 @@ if ([string]::IsNullOrWhiteSpace($Senha)) {
 if ($Senha.Length -lt 8) { throw "A senha deve ter pelo menos 8 caracteres." }
 
 Write-Host "Instalando Acessa Remoto..." -ForegroundColor Cyan
-Start-Process -FilePath $Instalador -ArgumentList "--silent-install" -Wait
+# -Wait esperaria também o serviço/bandeja abertos pelo instalador (nunca terminam); espera só o processo do instalador
+$proc = Start-Process -FilePath $Instalador -ArgumentList "--silent-install" -PassThru
+$null = $proc.WaitForExit(180000)
 
 $dirApp = Join-Path $env:ProgramFiles "AcessaRemoto"
 $exe = Join-Path $dirApp "AcessaRemoto.exe"
@@ -49,17 +51,25 @@ if (-not (Test-Path $exe) -and (Test-Path $orig)) {
 }
 if (-not (Test-Path $exe)) { throw "Instalação não concluída: $exe não encontrado. Envie os logs de $env:APPDATA\AcessaRemoto\log e C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\AcessaRemoto\log" }
 
+
+function Invoke-Acessa([string[]]$Argumentos, [int]$Segundos = 30) {
+  $out = [System.IO.Path]::GetTempFileName()
+  $p = Start-Process -FilePath $exe -ArgumentList $Argumentos -NoNewWindow -PassThru -RedirectStandardOutput $out
+  if (-not $p.WaitForExit($Segundos * 1000)) { try { $p.Kill() } catch {} }
+  $txt = Get-Content $out -Raw -ErrorAction SilentlyContinue; Remove-Item $out -ErrorAction SilentlyContinue
+  if ($null -eq $txt) { "" } else { $txt }
+}
 # Serviço com início automático (funciona na tela de login e com UAC)
 $svc = Get-Service -Name "AcessaRemoto" -ErrorAction SilentlyContinue
 if ($svc) { Set-Service -Name "AcessaRemoto" -StartupType Automatic; if ($svc.Status -ne "Running") { Start-Service "AcessaRemoto" } }
 Start-Sleep -Seconds 5
 
-$r = & $exe --password $Senha | Out-String
-if ($r -notmatch "Done") { Start-Sleep -Seconds 5; $r = & $exe --password $Senha | Out-String }
+$r = Invoke-Acessa @("--password", "`"$Senha`"")
+if ($r -notmatch "Done") { Start-Sleep -Seconds 5; $r = Invoke-Acessa @("--password", "`"$Senha`"") }
 if ($r -notmatch "Done") { throw "Falha ao definir a senha: $r" }
 
 $id = ""
-for ($i = 0; $i -lt 15 -and [string]::IsNullOrWhiteSpace($id); $i++) { $id = (& $exe --get-id | Out-String).Trim(); if (-not $id) { Start-Sleep 2 } }
+for ($i = 0; $i -lt 15 -and [string]::IsNullOrWhiteSpace($id); $i++) { $id = (Invoke-Acessa @("--get-id")).Trim(); if (-not $id) { Start-Sleep 2 } }
 
 $dir = Join-Path $env:ProgramData "AcessaRemoto"
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
@@ -77,4 +87,11 @@ Write-Host " Cópia salva em $file (somente administradores)"
 Write-Host "==============================================" -ForegroundColor Green
 Write-Host "Cadastre este ID no painel: https://remoto.sextafeira.ia.br/_admin/"
 Start-Process -FilePath $exe -ErrorAction SilentlyContinue
-Read-Host "Pressione ENTER para fechar"
+Write-Host ""
+Write-Host "Esta janela fecha sozinha em 60 segundos (ou pressione qualquer tecla)." -ForegroundColor Yellow
+$fim = (Get-Date).AddSeconds(60)
+while ((Get-Date) -lt $fim) {
+  if ([Console]::KeyAvailable) { $null = [Console]::ReadKey($true); break }
+  Start-Sleep -Milliseconds 250
+}
+exit 0
