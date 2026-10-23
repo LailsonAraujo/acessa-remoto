@@ -29,13 +29,13 @@ if ($Senha.Length -lt 8) { throw "A senha deve ter pelo menos 8 caracteres." }
 Write-Host "Instalando Acessa Remoto..." -ForegroundColor Cyan
 Start-Process -FilePath $Instalador -ArgumentList "--silent-install" -Wait
 
-$exe = Join-Path $env:ProgramFiles "Acessa Remoto\Acessa Remoto.exe"
+$exe = Join-Path $env:ProgramFiles "AcessaRemoto\AcessaRemoto.exe"
 for ($i = 0; $i -lt 60 -and -not (Test-Path $exe); $i++) { Start-Sleep -Seconds 2 }
-if (-not (Test-Path $exe)) { throw "Instalação não concluída: $exe não encontrado." }
+if (-not (Test-Path $exe)) { throw "Instalação não concluída: $exe não encontrado. Envie os logs de $env:APPDATA\AcessaRemoto\log e C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\AcessaRemoto\log" }
 
 # Serviço com início automático (funciona na tela de login e com UAC)
-$svc = Get-Service -Name "Acessa Remoto" -ErrorAction SilentlyContinue
-if ($svc) { Set-Service -Name "Acessa Remoto" -StartupType Automatic; if ($svc.Status -ne "Running") { Start-Service "Acessa Remoto" } }
+$svc = Get-Service -Name "AcessaRemoto" -ErrorAction SilentlyContinue
+if ($svc) { Set-Service -Name "AcessaRemoto" -StartupType Automatic; if ($svc.Status -ne "Running") { Start-Service "AcessaRemoto" } }
 Start-Sleep -Seconds 5
 
 $r = & $exe --password $Senha | Out-String
