@@ -29,8 +29,24 @@ if ($Senha.Length -lt 8) { throw "A senha deve ter pelo menos 8 caracteres." }
 Write-Host "Instalando Acessa Remoto..." -ForegroundColor Cyan
 Start-Process -FilePath $Instalador -ArgumentList "--silent-install" -Wait
 
-$exe = Join-Path $env:ProgramFiles "AcessaRemoto\AcessaRemoto.exe"
-for ($i = 0; $i -lt 60 -and -not (Test-Path $exe); $i++) { Start-Sleep -Seconds 2 }
+$dirApp = Join-Path $env:ProgramFiles "AcessaRemoto"
+$exe = Join-Path $dirApp "AcessaRemoto.exe"
+$orig = Join-Path $dirApp "rustdesk.exe"
+for ($i = 0; $i -lt 60 -and -not (Test-Path $exe) -and -not (Test-Path $orig); $i++) { Start-Sleep -Seconds 2 }
+
+# O executável vem como rustdesk.exe; serviço, atalhos e registro esperam AcessaRemoto.exe
+if (-not (Test-Path $exe) -and (Test-Path $orig)) {
+  Write-Host "Ajustando nome do executável..." -ForegroundColor Cyan
+  Stop-Service -Name "AcessaRemoto" -Force -ErrorAction SilentlyContinue
+  Get-Process -Name "rustdesk", "AcessaRemoto" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 3
+  for ($i = 0; $i -lt 10 -and -not (Test-Path $exe); $i++) {
+    try { Rename-Item -Path $orig -NewName "AcessaRemoto.exe" -ErrorAction Stop }
+    catch { Get-Process -Name "rustdesk" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
+  }
+  Start-Service -Name "AcessaRemoto" -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 5
+}
 if (-not (Test-Path $exe)) { throw "Instalação não concluída: $exe não encontrado. Envie os logs de $env:APPDATA\AcessaRemoto\log e C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\AcessaRemoto\log" }
 
 # Serviço com início automático (funciona na tela de login e com UAC)
@@ -60,4 +76,5 @@ Write-Host " Senha      : $Senha"
 Write-Host " Cópia salva em $file (somente administradores)"
 Write-Host "==============================================" -ForegroundColor Green
 Write-Host "Cadastre este ID no painel: https://remoto.sextafeira.ia.br/_admin/"
+Start-Process -FilePath $exe -ErrorAction SilentlyContinue
 Read-Host "Pressione ENTER para fechar"
