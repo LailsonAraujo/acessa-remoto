@@ -1,0 +1,37 @@
+name: Acessa Remoto - teste de protocolo Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify-url-protocols:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Preparar instalação simulada
+        shell: powershell
+        run: |
+          $dir = Join-Path $env:ProgramFiles "AcessaRemoto"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item "$env:SystemRoot\System32\notepad.exe" "$dir\AcessaRemoto.exe" -Force
+
+      - name: Executar reparo e validar os dois protocolos
+        shell: powershell
+        run: |
+          & .\acessa\Corrigir-Abertura-Painel.ps1
+          $expected = '"' + (Join-Path $env:ProgramFiles 'AcessaRemoto\AcessaRemoto.exe') + '" "%1"'
+          foreach ($scheme in 'acessaremoto','rustdesk') {
+            $root = "Registry::HKEY_CLASSES_ROOT\$scheme"
+            $protocol = (Get-ItemProperty -Path $root).'URL Protocol'
+            $command = (Get-Item -Path "$root\shell\open\command").GetValue('')
+            if ($null -eq $protocol) { throw "URL Protocol ausente em $scheme" }
+            if ($command -ne $expected) { throw "Comando incorreto em $scheme: $command" }
+          }
+
+      - name: Limpar registro de teste
+        if: always()
+        shell: powershell
+        run: |
+          Remove-Item 'Registry::HKEY_CLASSES_ROOT\acessaremoto' -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item 'Registry::HKEY_CLASSES_ROOT\rustdesk' -Recurse -Force -ErrorAction SilentlyContinue
