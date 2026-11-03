@@ -51,6 +51,24 @@ if (-not (Test-Path $exe) -and (Test-Path $orig)) {
 }
 if (-not (Test-Path $exe)) { throw "Instalação não concluída: $exe não encontrado. Envie os logs de $env:APPDATA\AcessaRemoto\log e C:\Windows\ServiceProfiles\LocalService\AppData\Roaming\AcessaRemoto\log" }
 
+function Register-UrlProtocol([string]$Scheme) {
+  $root = "Registry::HKEY_CLASSES_ROOT\$Scheme"
+  $command = "`"$exe`" `"%1`""
+
+  New-Item -Path $root -Force | Out-Null
+  Set-Item -Path $root -Value "URL:Acessa Remoto Protocol"
+  New-ItemProperty -Path $root -Name "URL Protocol" -Value "" -PropertyType String -Force | Out-Null
+  New-Item -Path "$root\DefaultIcon" -Force | Out-Null
+  Set-Item -Path "$root\DefaultIcon" -Value "`"$exe`",0"
+  New-Item -Path "$root\shell\open\command" -Force | Out-Null
+  Set-Item -Path "$root\shell\open\command" -Value $command
+}
+
+# O painel usa acessaremoto://. Mantemos rustdesk:// como alias para instalações
+# e links antigos, ambos apontando para o executável realmente instalado.
+Register-UrlProtocol -Scheme "acessaremoto"
+Register-UrlProtocol -Scheme "rustdesk"
+
 
 function Invoke-Acessa([string[]]$Argumentos, [int]$Segundos = 30) {
   $out = [System.IO.Path]::GetTempFileName()

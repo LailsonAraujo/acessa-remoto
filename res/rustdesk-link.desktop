@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=RustDesk
+Name=Acessa Remoto
 NoDisplay=true
-MimeType=x-scheme-handler/rustdesk;
+MimeType=x-scheme-handler/acessaremoto;x-scheme-handler/rustdesk;
 TryExec=rustdesk
 Exec=rustdesk %u
 Icon=rustdesk
