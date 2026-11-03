@@ -37,6 +37,16 @@ class ProtocolRegistrationTests(unittest.TestCase):
         self.assertIn("Name=Acessa Remoto", desktop)
         self.assertIn("GenericName=Acesso remoto", desktop)
 
+    def test_linux_deb_uses_acessa_package_identity_and_refreshes_desktop_handlers(self):
+        build_script = (ROOT / "build.py").read_text(encoding="utf-8")
+        postinst = (ROOT / "res" / "DEBIAN" / "postinst").read_text(encoding="utf-8")
+
+        self.assertIn("Package: acessaremoto", build_script)
+        self.assertIn("Conflicts: rustdesk", build_script)
+        self.assertIn("Replaces: rustdesk", build_script)
+        self.assertIn("Provides: rustdesk", build_script)
+        self.assertIn("update-desktop-database", postinst)
+
 
 if __name__ == "__main__":
     unittest.main()

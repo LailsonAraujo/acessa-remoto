@@ -374,6 +374,30 @@ Description: A remote control software.
     file.close()
 
 
+def retarget_control_to_acessa():
+    path = "../res/DEBIAN/control"
+    with open(path) as f:
+        lines = f.readlines()
+    out = []
+    for line in lines:
+        if line.startswith("Package: rustdesk"):
+            out.append("Package: acessaremoto\n")
+            out.append("Conflicts: rustdesk\nReplaces: rustdesk\nProvides: rustdesk\n")
+        elif line.startswith("Maintainer:"):
+            out.append("Maintainer: Acessa Nordeste <suporte@acessanordeste.com.br>\n")
+        elif line.startswith("Homepage:"):
+            out.append("Homepage: https://remoto.sextafeira.ia.br\n")
+        elif line.startswith("Description:"):
+            out.append("Description: Cliente de suporte e acesso remoto Acessa Nordeste.\n")
+        else:
+            out.append(line)
+    body = "".join(out)
+    if "Package: acessaremoto\n" not in body or "Conflicts: rustdesk\n" not in body:
+        raise Exception(f"could not retarget {path} to Acessa Remoto; upstream control layout changed")
+    with open(path, "w") as f:
+        f.write(body)
+
+
 def ffi_bindgen_function_refactor():
     # workaround ffigen
     system2(
@@ -778,6 +802,8 @@ def build_flutter_deb(version, features):
     generate_control_file(version)
     if ships_so:
         retarget_control_to_drm_variant()
+    else:
+        retarget_control_to_acessa()
     system2('cp -a ../res/DEBIAN/* tmpdeb/DEBIAN/')
     md5_file_folder("tmpdeb/")
     system2('dpkg-deb -b tmpdeb rustdesk.deb;')
@@ -919,6 +945,8 @@ def build_deb_from_folder(version, binary_folder, want_drm=False):
     # its library in tmpdeb whichever of the two shapes it came from.
     if want_drm:
         retarget_control_to_drm_variant()
+    else:
+        retarget_control_to_acessa()
     system2('cp -a ../res/DEBIAN/* tmpdeb/DEBIAN/')
     md5_file_folder("tmpdeb/")
     system2('dpkg-deb -b tmpdeb rustdesk.deb;')

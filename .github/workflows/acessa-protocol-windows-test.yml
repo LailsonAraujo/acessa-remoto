@@ -26,7 +26,7 @@ jobs:
             $protocol = (Get-ItemProperty -Path $root).'URL Protocol'
             $command = (Get-Item -Path "$root\shell\open\command").GetValue('')
             if ($null -eq $protocol) { throw "URL Protocol ausente em $scheme" }
-            if ($command -ne $expected) { throw "Comando incorreto em $scheme: $command" }
+            if ($command -ne $expected) { throw "Comando incorreto em ${scheme}: $command" }
           }
 
       - name: Limpar registro de teste
